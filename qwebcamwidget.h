@@ -20,9 +20,10 @@
 #include <QScrollBar>
 
 #include <QResizeEvent>
+#include <QOpenGLWidget>
 #include "qwebcamsource.h"
 
-class QWebcamWidget : public QWidget
+class QWebcamWidget : public QFrame
 {
     Q_OBJECT
 public:
@@ -61,8 +62,6 @@ protected:
 
     virtual void changeEvent(QEvent *event) override;
     virtual void resizeEvent(QResizeEvent *event) override;
-    virtual void hideEvent(QHideEvent *event) override;
-    virtual void showEvent(QShowEvent *event) override;
     virtual void paintEvent(QPaintEvent *event) override;
 
 protected slots:

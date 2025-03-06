@@ -1,17 +1,18 @@
 #include "qwebcamwidget.h"
 
-#include "system/settings.h"
+#include "flo/settings.h"
 
-QWebcamWidget::QWebcamWidget(QString source, int timeout, QWidget *parent) : QWidget(parent)
+QWebcamWidget::QWebcamWidget(QString source, int timeout, QWidget *parent) : QFrame(parent)
 {
     setupUi();
 
     m_timeout = timeout;
 
     m_webcamThread = new QThread(this);
-    m_webcamSource = new QWebcamSource(m_timeout, m_webcamThread);
-    m_webcamSource->setSource(source);
+    m_webcamThread->setPriority(QThread::LowPriority);
+    m_webcamSource = new QWebcamSource(m_timeout, this);
     m_webcamSource->moveToThread(m_webcamThread);
+    m_webcamSource->setSource(source);
 
     connect(m_webcamSource, SIGNAL(frameChanged(QVideoFrame)), this, SLOT(videoFrameChangeEvent(QVideoFrame)));
     connect(m_webcamSource, SIGNAL(stateChanged()), this, SLOT(webcamSourceStateChanged()));
@@ -20,41 +21,41 @@ QWebcamWidget::QWebcamWidget(QString source, int timeout, QWidget *parent) : QWi
 
 QWebcamWidget::~QWebcamWidget()
 {
+    if(m_webcamSource)
+    {
+        m_webcamSource->moveToThread(QThread::currentThread());
+        m_webcamSource->stop();
+        delete m_webcamSource;
+    }
+
     if(m_webcamThread)
     {
-        if(m_webcamSource)
-        {
-            m_webcamSource->moveToThread(QThread::currentThread());
-            m_webcamSource->stop();
-            m_webcamSource->deleteLater();
-        }
-
         if(m_webcamThread->isRunning())
             m_webcamThread->exit();
 
-        m_webcamThread->deleteLater();
+        delete m_webcamThread;
     }
 
     if(m_videoLabel)
     {
         m_layout->removeWidget(m_videoLabel);
-        m_videoLabel->deleteLater();
+        delete m_videoLabel;
     }
 
     if(m_nameLabel)
     {
-        m_layout->removeWidget(m_videoLabel);
-        m_nameLabel->deleteLater();
+        m_layout->removeWidget(m_nameLabel);
+        delete m_nameLabel;
     }
 
     if(m_infoLabel)
     {
-        m_layout->removeWidget(m_videoLabel);
-        m_infoLabel->deleteLater();
+        m_layout->removeWidget(m_infoLabel);
+        delete m_infoLabel;
     }
 
     if(m_layout)
-        m_layout->deleteLater();
+        delete m_layout;
 }
 
 void QWebcamWidget::setStateIcon(QWebcamSource::State state, QIcon icon)
@@ -104,43 +105,43 @@ void QWebcamWidget::pause()
 void QWebcamWidget::stop()
 {
     m_webcamSource->stop();
+    // m_webcamSource->moveToThread(this->thread());
+    // delete m_webcamSource;
+
+    m_lastFrame.fill(Qt::black);
+
+    // m_webcamSource = new QWebcamSource(m_timeout, this);
+    // m_webcamSource->moveToThread(m_webcamThread);
+
+    // connect(m_webcamSource, SIGNAL(frameChanged(QVideoFrame)), this, SLOT(videoFrameChangeEvent(QVideoFrame)));
+    // connect(m_webcamSource, SIGNAL(stateChanged()), this, SLOT(webcamSourceStateChanged()));
+    // webcamSourceStateChanged();
 }
 
 void QWebcamWidget::resizeEvent(QResizeEvent *event)
 {
-    QWidget::resizeEvent(event);
+    QFrame::resizeEvent(event);
 
     if(m_overlayWidget)
         m_overlayWidget->resize(event->size());
 }
 
-void QWebcamWidget::hideEvent(QHideEvent *event)
-{
-    pause();
-    QWidget::hideEvent(event);
-}
-
-void QWebcamWidget::showEvent(QShowEvent *event)
-{
-    QWidget::showEvent(event);
-    play();
-}
-
 void QWebcamWidget::paintEvent(QPaintEvent *event)
 {
-    if(!m_lastFrame.isNull())
+    if(!m_lastFrame.isNull() && !visibleRegion().isNull())
     {
         QPainter painter;
 
         painter.begin(this);
         painter.setRenderHint(QPainter::LosslessImageRendering);
         painter.setRenderHint(QPainter::Antialiasing);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
         painter.drawPixmap(rect(), m_lastFrame, m_lastFrame.rect());
         painter.end();
     }
 
-    QWidget::paintEvent(event);
+    //QFrame::paintEvent(event);
 }
 
 void QWebcamWidget::on_playbackRateChanged(qreal rate)
@@ -161,6 +162,7 @@ void QWebcamWidget::videoFrameChangeEvent(QVideoFrame frame)
         setupIcons();
 
         emit frameChanged();
+
         update();
     }
 }
@@ -290,7 +292,7 @@ void QWebcamWidget::changeEvent(QEvent *event)
         setupIcons();
     }
 
-    QWidget::changeEvent(event);
+    QFrame::changeEvent(event);
 }
 
 QString QWebcamWidget::info() const
