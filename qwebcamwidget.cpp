@@ -1,8 +1,12 @@
 #include "qwebcamwidget.h"
 
+<<<<<<< HEAD
 #include "flo/settings.h"
 
 QWebcamWidget::QWebcamWidget(QString source, int timeout, QWidget *parent) : QFrame(parent)
+=======
+QWebcamWidget::QWebcamWidget(QString source, int timeout, QWidget *parent) : QWidget(parent)
+>>>>>>> 64348fc71896bbfd96a765b21c2d550ca2fc5b0f
 {
     setupUi();
 
